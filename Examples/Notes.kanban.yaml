@@ -1,0 +1,67 @@
+format_version: 1
+
+project:
+  title: Notes Application
+  description: |-
+    A lightweight native macOS notes application.
+
+groups:
+  - id: foundation
+    title: Foundation
+    description: Core application infrastructure.
+
+    tasks:
+      - id: T-001
+        title: Create application skeleton
+        status: done
+        description: |-
+          Create the initial SwiftUI application.
+        acceptance_criteria:
+          - Application builds successfully
+          - Main window opens
+        depends_on: []
+        agent_notes: |-
+          Created SwiftUI application target.
+        verification:
+          - "xcodebuild: passed"
+        ready_for_review: false
+
+      - id: T-002
+        title: Implement document persistence
+        status: doing
+        description: |-
+          Create a Codable document model and support
+          saving notes to individual Markdown files.
+        acceptance_criteria:
+          - Notes can be saved
+          - Notes can be reopened
+          - Existing notes are not overwritten
+        depends_on:
+          - T-001
+        agent_notes: |-
+          Persistence implemented. Unit tests pass.
+          Ready for developer review.
+        verification:
+          - "Unit tests: passed"
+        ready_for_review: true
+
+  - id: interface
+    title: User Interface
+    description: Build the note editing experience.
+
+    tasks:
+      - id: T-003
+        title: Implement notes list
+        status: todo
+        description: |-
+          Display available notes in a sidebar.
+        acceptance_criteria:
+          - Notes appear in a list
+          - Selecting a note opens the editor
+        depends_on:
+          - T-002
+        agent_notes: ""
+        verification: []
+        ready_for_review: false
+
+ungrouped: []
