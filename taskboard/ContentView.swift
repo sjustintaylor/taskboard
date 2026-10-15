@@ -37,7 +37,7 @@ struct ContentView: View {
             BoardSplitView(showsInspector: inspectedID.flatMap { project.task($0) } != nil) { boardWidth in
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 16) {
-                        ForEach(TaskStatus.allCases) { status in column(status, width: max(220, (boardWidth - 72) / 3)) }
+                        ForEach(TaskStatus.allCases) { status in column(status, width: max(220, (boardWidth - 88) / 4)) }
                     }.padding(20)
                 }
                 .focusable().focused($boardFocused)
@@ -115,7 +115,7 @@ struct ContentView: View {
                 .accessibilityLabel("Overall project progress")
             Spacer()
             metric("Doing", count: project.tasks.filter { $0.status == .doing }.count, color: .blue)
-            metric("Awaiting review", count: project.tasks.filter { $0.status == .doing && $0.readyForReview }.count, color: .orange)
+            metric("Awaiting review", count: project.tasks.filter { $0.status == .review }.count, color: .orange)
         }.padding(20)
     }
     private func metric(_ title: String, count: Int, color: Color) -> some View {
@@ -153,7 +153,7 @@ struct ContentView: View {
         let tasks = visibleTasks.filter { $0.status == status }
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Circle().fill(status == .todo ? Color.secondary : status == .doing ? Color.blue : Color.green).frame(width: 8, height: 8)
+                Circle().fill(status == .todo ? Color.secondary : status == .doing ? Color.blue : status == .review ? Color.orange : Color.green).frame(width: 8, height: 8)
                 Text(status.title).font(.headline)
                 Text("\(tasks.count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 Spacer()
@@ -166,7 +166,7 @@ struct ContentView: View {
                         if filter == .all || filter == .ungrouped { groupSection(nil, tasks: tasks.filter { project.groupID(for: $0.id) == nil }) }
                     } else {
                         ForEach(tasks) { task in card(task) }
-                        if tasks.isEmpty { Text(status == .doing ? "Move a task here to start work." : "Reviewed work appears here.").font(.callout).foregroundStyle(.secondary).padding(12) }
+                        if tasks.isEmpty { Text(status == .doing ? "Move a task here to start work." : status == .review ? "Work awaiting review appears here." : "Reviewed work appears here.").font(.callout).foregroundStyle(.secondary).padding(12) }
                     }
                     Color.clear.frame(height: 50).contentShape(Rectangle()).dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: status) }
                 }.padding(12)
@@ -214,7 +214,7 @@ struct ContentView: View {
                 if !project.unresolved(task).isEmpty { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange).help("Unresolved dependencies: " + project.unresolved(task).joined(separator: ", ")) }
             }
             if task.status != .todo { Text(project.groupTitle(for: task.id)).font(.caption).foregroundStyle(.secondary) }
-            if task.status == .doing && task.readyForReview { Label("Ready for review", systemImage: "checkmark.bubble").font(.caption.weight(.medium)).foregroundStyle(.orange) }
+            if task.status == .review { Label("Ready for review", systemImage: "checkmark.bubble").font(.caption.weight(.medium)).foregroundStyle(.orange) }
             if task.status == .done && !task.text("agent_notes").isEmpty { Text(task.text("agent_notes")).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)

@@ -28,7 +28,7 @@ groups:
 
       - id: T-002
         title: Implement document persistence
-        status: doing
+        status: review
         description: |-
           Create a Codable document model and support
           saving notes to individual Markdown files.

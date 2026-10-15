@@ -67,7 +67,7 @@ enum YAMLCodec {
     private static func task(_ value: YAMLValue, _ path: String) throws -> BoardTask {
         let fields = try object(value, path)
         for key in ["id", "title", "status"] { try requiredString(fields, key, path) }
-        guard TaskStatus(rawValue: fields["status"]!.string!) != nil else { throw BoardError("\(path).status must be todo, doing or done.") }
+        guard TaskStatus(rawValue: fields["status"]!.string!) != nil else { throw BoardError("\(path).status must be todo, doing, review or done.") }
         for key in ["description", "agent_notes"] { try optionalString(fields, key, path) }
         for key in ["acceptance_criteria", "depends_on", "verification"] {
             if let value = fields[key] {

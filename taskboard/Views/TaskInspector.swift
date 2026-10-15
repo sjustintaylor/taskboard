@@ -80,12 +80,12 @@ struct TaskInspector: View {
                     section("Agent Notes") { editor(text("agent_notes"), label: "Agent notes") }
                     section("Verification", hint: "One test or result per line") { editor(list("verification"), label: "Verification") }
                     if task.status == .doing {
-                        Toggle("Ready for review", isOn: Binding(get: { task.readyForReview }, set: { ready in edit("Review Readiness") { $0.readyForReview = ready } }))
-                        if task.readyForReview {
-                            HStack {
-                                Button("Approve → Done") { edit("Approve Task") { $0.status = .done } }.buttonStyle(.borderedProminent)
-                                Button("Return to Work") { edit("Return to Work") { $0.readyForReview = false } }
-                            }
+                        Button("Send to Review") { edit("Send to Review") { $0.status = .review } }
+                    }
+                    if task.status == .review {
+                        HStack {
+                            Button("Approve → Done") { edit("Approve Task") { $0.status = .done } }.buttonStyle(.borderedProminent)
+                            Button("Return to Work") { edit("Return to Work") { $0.status = .doing } }
                         }
                     }
                     Button {

@@ -28,9 +28,9 @@ enum AgentBrief {
         Read the current project file before every edit. Preserve all IDs, unrelated tasks,
         unknown fields, grouping and order. Modify only fields required for this task.
         Keep valid UTF-8 YAML; do not introduce tags, anchors, aliases or timestamps.
-        Move \(task.id) to status: doing when work starts. Record material implementation
+        Move \(task.id) to status: doing when work starts and clear ready_for_review. Record material implementation
         changes in agent_notes and tests run with results in verification.
-        When implementation is ready, set ready_for_review: true and leave status: doing.
+        When implementation is ready, set status: review and ready_for_review: true.
         Final approval and the move to done belong to the developer unless explicitly instructed otherwise.
         """
     }

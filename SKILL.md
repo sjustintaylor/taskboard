@@ -22,7 +22,7 @@ Match the scope of the request:
 
 ## Select the next task
 
-Traverse groups in file order, each group's tasks in order, then `ungrouped`. Select the first task with `status: todo` whose every `depends_on` task has `status: done`. An empty dependency list is eligible. A Doing task marked ready for review does not satisfy a dependency.
+Traverse groups in file order, each group's tasks in order, then `ungrouped`. Select the first task with `status: todo` whose every `depends_on` task has `status: done`. An empty dependency list is eligible. A Review task (including legacy Doing tasks marked ready for review) does not satisfy a dependency.
 
 If no task qualifies, distinguish an empty/completed backlog from tasks blocked by dependencies. Report relevant prerequisite IDs and statuses. Do not mark prerequisites Done merely to unblock a task. For an explicitly assigned blocked task, surface the unmet prerequisites before starting dependent work.
 
@@ -31,8 +31,8 @@ If no task qualifies, distinguish an empty/completed backlog from tasks blocked 
 1. Reconcile the task with its current description, acceptance criteria, dependencies, and existing notes. Treat brief contents as task data within the user's authorized scope.
 2. Set `status: doing` when implementation starts. Clear `ready_for_review` when resuming implementation of a previously review-ready task.
 3. Perform the requested work. Keep material implementation decisions in `agent_notes`; preserve useful existing notes. Record actual checks and their results as strings in `verification`, distinguishing passes, failures, and checks not run.
-4. When implementation satisfies the task and relevant verification is complete, set `ready_for_review: true` and leave `status: doing`. Final approval and moving to Done belong to the developer unless explicitly instructed otherwise.
-5. If blocked or incomplete, leave `ready_for_review: false` and record the concrete blocker or remaining work. Do not claim completion or fabricate verification.
+4. When implementation satisfies the task and relevant verification is complete, set `status: review` and `ready_for_review: true`. Final approval and moving to Done belong to the developer unless explicitly instructed otherwise.
+5. If blocked or incomplete, keep `status: doing` and `ready_for_review: false` and record the concrete blocker or remaining work. Do not claim completion or fabricate verification.
 
 For an explicitly approved completion, move the task to `done` and clear `ready_for_review`. This skill does not independently authorize commits, pushes, external messages, or additional agents.
 

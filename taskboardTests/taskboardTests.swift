@@ -101,6 +101,32 @@ struct TaskboardTests {
         #expect(p.completed == 2)
         #expect(try YAMLCodec.decode(YAMLCodec.encode(p)) == p)
     }
+    @Test func reviewStatusSupportsLegacyBoardsAndTransitions() throws {
+        var p = try fixture()
+        #expect(p.task("T-002")?.status == .review)
+        #expect(p.nextTask == nil)
+        #expect(p.completed == 1)
+        // Reading a legacy review task does not rewrite its stored fields.
+        #expect(p.task("T-002")?.text("status") == "doing")
+        p.move(["T-002"], status: .doing)
+        #expect(p.task("T-002")?.readyForReview == false)
+        p.move(["T-002"], status: .review)
+        let decoded = try YAMLCodec.decode(YAMLCodec.encode(p))
+        #expect(decoded.task("T-002")?.status == .review)
+        #expect(decoded.task("T-002")?.text("status") == "review")
+        #expect(decoded.nextTask == nil)
+        p.move(["T-002"], status: .done)
+        #expect(p.task("T-002")?.readyForReview == false)
+        #expect(p.nextTask?.id == "T-003")
+    }
+    @Test func explicitReviewDoesNotRequireLegacyFlag() throws {
+        let source = Self.example.replacingOccurrences(of: "status: doing", with: "status: review")
+            .replacingOccurrences(of: "ready_for_review: true", with: "ready_for_review: false")
+        let p = try YAMLCodec.decode(Data(source.utf8))
+        #expect(p.task("T-002")?.status == .review)
+        #expect(p.task("T-002")?.readyForReview == true)
+        #expect(try YAMLCodec.decode(YAMLCodec.encode(p)) == p)
+    }
     @Test func taskAndGroupOrderingPersists() throws {
         var p = try fixture()
         p.move(["T-002"], before: "T-001")
@@ -120,7 +146,7 @@ struct TaskboardTests {
         p.update("T-002") { $0.status = .done }
         let task = try #require(p.nextTask)
         let brief = AgentBrief.make(task: task, project: p, fileURL: URL(fileURLWithPath: "/tmp/notes.kanban.yaml"))
-        for required in ["T-003", "Notes Application", "/tmp/notes.kanban.yaml", "T-002", "ready_for_review: true", "status: doing", "verification", "Preserve all IDs"] { #expect(brief.contains(required)) }
+        for required in ["T-003", "Notes Application", "/tmp/notes.kanban.yaml", "T-002", "ready_for_review: true", "status: review", "verification", "Preserve all IDs"] { #expect(brief.contains(required)) }
     }
     @Test func mergeIndependentTaskAndFieldChanges() throws {
         let base = try fixture(); var local = base, remote = base

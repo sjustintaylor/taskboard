@@ -7,7 +7,7 @@ Native macOS Kanban for supervising external coding agents. Each project is a si
 
 ## Features
 
-- Three workflow states: **Todo**, **Doing**, and **Done**.
+- Four workflow states: **Todo**, **Doing**, **Review**, and **Done**.
 - Ordered, collapsible groups with completion progress, search, and filtering.
 - Rich text descriptions and individual acceptance criteria, saved as Markdown in YAML.
 - Compact dependency lists with a searchable dependency manager.
@@ -44,7 +44,7 @@ The local unsigned development app is produced at `/tmp/taskboard-build/Build/Pr
 
 - **⌘N / ⌘O / ⌘S:** new project, open, save. Save projects with the `.kanban.yaml` suffix. Multiple projects open in separate windows.
 - **⌘T:** new task. Select a card to edit it in the right inspector. **Escape** closes the inspector; arrow keys navigate cards; **Return** opens the selected task.
-- **⌘F:** search. The group picker filters all three columns. Overall and group progress always count the entire project, regardless of the filter.
+- **⌘F:** search. The group picker filters all four columns. Overall and group progress always count the entire project, regardless of the filter.
 - **Groups:** create, rename and reorder groups. Group deletion requires confirmation and moves all its tasks to Ungrouped.
 - Drag tasks to columns to change status, to Todo groups to change group, or onto a card to insert before it. The context menu also provides status, group and ordering actions. Persisted ordering follows the schema's group and task sequences; flat columns retain this canonical order.
 - Launching without restored boards shows **Welcome to Taskboard**, with recent files, **New Board**, and **Open Board…**. The welcome window also returns after the last board closes and is available from the Window menu.
@@ -54,7 +54,7 @@ The local unsigned development app is produced at `/tmp/taskboard-build/Build/Pr
 - **⌘-click** selects multiple cards. **More → Move Selected to Group** moves the selection together. Deleting tasks requires confirmation and removes dependencies pointing to them.
 - Descriptions and notes accept Markdown. Description preview supports inline Markdown; source editors retain code blocks and all Markdown text verbatim.
 - **Copy Task Brief** includes task details, criteria, dependencies, file path and the agent editing contract. **Copy Next Task Brief** chooses the first Todo task with all dependencies Done. Save the document first to establish the path.
-- Agents set `status: doing`, update `agent_notes` and `verification`, then set `ready_for_review: true`. **Approve → Done** clears review readiness. Dependencies produce warnings, not status-transition locks.
+- Agents set `status: doing`, update `agent_notes` and `verification`, then set `status: review` and `ready_for_review: true`. **Approve → Done** clears review readiness. Dependencies produce warnings, not status-transition locks.
 - **⌘Z / ⇧⌘Z:** undo / redo. Undo merges the inverse edit against current contents, preserving independent external work; incompatible undo is refused with a diagnostic.
 
 An example matching the specification is in [Examples/Notes.kanban.yaml](Examples/Notes.kanban.yaml).
@@ -83,7 +83,9 @@ ungrouped:
     ready_for_review: false
 ```
 
-`format_version: 1`, `project`, `groups`, and `ungrouped` are required. Tasks require stable, globally unique string IDs, nonempty titles, and `todo`, `doing` or `done` status. Optional task fields are `description`, `acceptance_criteria`, `depends_on`, `agent_notes`, `verification`, and `ready_for_review`.
+`format_version: 1`, `project`, `groups`, and `ungrouped` are required. Tasks require stable, globally unique string IDs, nonempty titles, and `todo`, `doing`, `review` or `done` status. Optional task fields are `description`, `acceptance_criteria`, `depends_on`, `agent_notes`, `verification`, and `ready_for_review`.
+
+Legacy tasks with `status: doing` and `ready_for_review: true` appear in Review without rewriting the file on open. Review tasks remain incomplete and do not satisfy dependencies. Returning to Doing or moving to Done clears review readiness.
 
 The codec checks required types, duplicate keys and IDs, missing references, cycles, unsupported versions, custom tags, anchors and aliases. Dates and null-like text must be quoted; booleans must be `true` or `false`. Unknown fields using supported mappings, sequences, strings, decimal integers and booleans survive editing. Multiline descriptions and notes use literal blocks; other strings are quoted to preserve their types. Serialization has deterministic field order. Arbitrary comments are preserved on a no-op save but may be removed after a semantic edit.
 

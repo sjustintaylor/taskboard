@@ -9,7 +9,7 @@ indirect enum YAMLValue: Equatable, Sendable {
 }
 
 enum TaskStatus: String, CaseIterable, Identifiable, Sendable {
-    case todo, doing, done
+    case todo, doing, review, done
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
@@ -23,12 +23,23 @@ struct BoardTask: Identifiable, Equatable, Sendable {
     var id: String { fields["id"]!.string! }
     var title: String { get { text("title") } set { fields["title"] = .string(newValue) } }
     var status: TaskStatus {
-        get { TaskStatus(rawValue: text("status"))! }
-        set { fields["status"] = .string(newValue.rawValue); if newValue != .doing { readyForReview = false } }
+        get {
+            let stored = TaskStatus(rawValue: text("status"))!
+            // Legacy boards represented review as Doing plus a readiness flag.
+            return stored == .doing && fields["ready_for_review"] == .boolean(true) ? .review : stored
+        }
+        set {
+            fields["status"] = .string(newValue.rawValue)
+            fields["ready_for_review"] = .boolean(newValue == .review)
+        }
     }
     var readyForReview: Bool {
-        get { fields["ready_for_review"] == .boolean(true) }
-        set { fields["ready_for_review"] = .boolean(newValue) }
+        get { status == .review }
+        set {
+            if newValue { status = .review }
+            else if status == .review { status = .doing }
+            else { fields["ready_for_review"] = .boolean(false) }
+        }
     }
     func text(_ key: String) -> String { fields[key]?.string ?? "" }
     func list(_ key: String) -> [String] { fields[key]?.array?.compactMap(\.string) ?? [] }
