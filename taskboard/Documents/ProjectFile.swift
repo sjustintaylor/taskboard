@@ -5,6 +5,7 @@ struct ProjectSnapshot: Sendable {
     var baseline: Project?
     var sourceURL: URL? = nil
     var diagnostic: String? = nil
+    var readGeneration: UInt64? = nil
 }
 
 enum ProjectFile {

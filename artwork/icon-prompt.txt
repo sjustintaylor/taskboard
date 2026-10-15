@@ -1,0 +1,6 @@
+Generated with the built-in image_gen tool.
+
+Use case: logo-brand
+Asset type: production macOS application icon for Taskboard, a native Kanban task app.
+Primary request: a clean, beautifully restrained app icon depicting a three-column Kanban board, recognizable at small Dock sizes.
+Composition: one centered rounded-square app tile occupying about 84% of a square 1024x1024 canvas, with fully transparent outer margins. Straight-on view. Inside the tile, three evenly spaced vertical groups of simple rounded task cards, with a balanced stepped arrangement, generous spacing, and strong silhouette. No tiny details or text. A refined cool blue tile with very subtle tonal depth, crisp pale cards and a single soft teal completion accent. Minimal native macOS feel, gently rounded edges, restrained soft shadow, no heavy 3D perspective or gloss. Large bold geometry. Produce only the finished icon, no presentation sheet, no surrounding objects, no labels, no watermark.

@@ -7,14 +7,19 @@ extension UTType {
 }
 
 struct KanbanReader: DocumentReader {
-    var lastValid: @Sendable () async -> Project?
+    struct Context: Sendable {
+        var lastValid: Project?
+        var generation: UInt64
+    }
+    var beginRead: @Sendable () async -> Context
     @concurrent func read(from source: sending URL, progress: consuming Subprogress) async throws -> sending ProjectSnapshot {
+        let context = await beginRead()
         do {
             let project = try ProjectFile.read(source, alreadyCoordinated: true)
-            return ProjectSnapshot(project: project, baseline: project)
+            return ProjectSnapshot(project: project, baseline: project, readGeneration: context.generation)
         } catch {
-            guard let project = await lastValid() else { throw error }
-            return ProjectSnapshot(project: project, baseline: nil, diagnostic: error.localizedDescription)
+            guard let project = context.lastValid else { throw error }
+            return ProjectSnapshot(project: project, baseline: nil, diagnostic: error.localizedDescription, readGeneration: context.generation)
         }
     }
 }
@@ -31,6 +36,8 @@ struct KanbanWriter: DocumentWriter {
     nonisolated static var readableContentTypes: [UTType] { [.kanbanProject, .yaml] }
     var project = Project()
     @ObservationIgnored var baseline: Project?
+    @ObservationIgnored private var readGeneration: UInt64 = 0
+    let dragIdentity = UUID()
     var issue: String?
     var editError: String?
     var conflict = false
@@ -41,12 +48,18 @@ struct KanbanWriter: DocumentWriter {
 
     init(configuration: URLDocumentConfiguration? = nil) { self.configuration = configuration }
     nonisolated func reader(configuration: sending DocumentReadConfiguration) -> sending KanbanReader {
-        KanbanReader { [weak self] in await self?.baseline }
+        KanbanReader { await self.beginRead() }
     }
     nonisolated func writer(configuration: sending DocumentWriteConfiguration) -> sending KanbanWriter {
         KanbanWriter { [weak self] written, result in await self?.didSave(written: written, result: result) }
     }
-    private func didSave(written: Project, result: Project) {
+    func beginRead() -> KanbanReader.Context {
+        // Only the latest read may apply; saves and recovery invalidate in-flight reads too.
+        readGeneration &+= 1
+        return KanbanReader.Context(lastValid: baseline, generation: readGeneration)
+    }
+    func didSave(written: Project, result: Project) {
+        readGeneration &+= 1
         do {
             project = try ProjectMerge.merge(base: written, local: project, remote: result)
             baseline = result
@@ -58,6 +71,8 @@ struct KanbanWriter: DocumentWriter {
         return ProjectSnapshot(project: project, baseline: baseline, sourceURL: fileURL)
     }
     func apply(snapshot: sending ProjectSnapshot, previous: sending ProjectSnapshot?) async throws {
+        if let generation = snapshot.readGeneration, generation != readGeneration { return }
+        readGeneration &+= 1
         if let diagnostic = snapshot.diagnostic {
             issue = "External YAML is invalid: \(diagnostic)\nThe last valid board is retained. Saving is paused until the file is repaired."
             conflict = false; externalProject = nil
@@ -77,9 +92,16 @@ struct KanbanWriter: DocumentWriter {
     }
     func refresh() async {
         guard let url = fileURL else { return }
-        do {
+        await refresh {
             let coordinator = configuration?.makeFileCoordinator()
-            let revision = try await Task.detached { try ProjectFile.readRevision(url, coordinator: coordinator) }.value
+            return try await Task.detached { try ProjectFile.readRevision(url, coordinator: coordinator) }.value
+        }
+    }
+    func refresh(readRevision: () async throws -> ProjectFile.Revision) async {
+        let generation = beginRead().generation
+        do {
+            let revision = try await readRevision()
+            guard generation == readGeneration else { return }
             acceptExternal(revision.project)
             if !conflict {
                 // Acknowledge the precise disk revision to the native document system.
@@ -87,12 +109,15 @@ struct KanbanWriter: DocumentWriter {
                 configuration?.lastContentModificationDate = revision.modificationDate
                 if let nativeDocument, nativeDocument.fileModificationDate != revision.modificationDate {
                     nativeDocument.performAsynchronousFileAccess { done in
-                        nativeDocument.fileModificationDate = revision.modificationDate
+                        if generation == self.readGeneration {
+                            nativeDocument.fileModificationDate = revision.modificationDate
+                        }
                         done()
                     }
                 }
             }
         } catch {
+            guard generation == readGeneration else { return }
             issue = "External file cannot be loaded: \(error.localizedDescription)\nThe last valid board is retained. Saving is paused until the file is repaired."
             conflict = false; externalProject = nil
         }
@@ -105,6 +130,17 @@ struct KanbanWriter: DocumentWriter {
         do { _ = try YAMLCodec.encode(updated) }
         catch { editError = error.localizedDescription; return }
         replace(updated, name: name, undoManager: undoManager)
+    }
+    @discardableResult
+    func drop(_ payloads: [TaskDragPayload], status: TaskStatus, group: String? = nil,
+              changeGroup: Bool = false, before: String? = nil, undoManager: UndoManager?) -> Bool {
+        guard issue == nil, !payloads.isEmpty,
+              payloads.allSatisfy({ $0.documentID == dragIdentity && project.task($0.taskID) != nil }) else { return false }
+        let ids = Set(payloads.map(\.taskID))
+        edit("Move Tasks", undoManager: undoManager) {
+            $0.move(ids, status: status, group: group, changeGroup: changeGroup, before: before)
+        }
+        return true
     }
     private func replace(_ updated: Project, name: String, undoManager: UndoManager?) {
         let old = project
@@ -129,6 +165,7 @@ struct KanbanWriter: DocumentWriter {
             guard url.standardizedFileURL != fileURL?.standardizedFileURL else { throw BoardError("Choose a different path to preserve the external version.") }
             try YAMLCodec.encode(project).write(to: url, options: .atomic)
             if let remote = externalProject {
+                readGeneration &+= 1
                 project = remote; baseline = remote; issue = nil; conflict = false; externalProject = nil
             }
         } catch { issue = error.localizedDescription }

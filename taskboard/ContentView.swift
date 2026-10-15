@@ -63,7 +63,7 @@ struct ContentView: View {
             }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.vertical, 8)
         }
         .background(DocumentWindowSetup(document: document).frame(width: 0, height: 0))
-        .background(BoardKeyboardShortcuts(navigate: navigate, navigateColumn: navigateColumn,
+        .background(BoardKeyboardShortcuts(boardFocused: boardFocused, navigate: navigate, navigateColumn: navigateColumn,
             open: { inspectedID = selection.first },
             escape: {
                 if inspectedID == nil { search = "" }
@@ -167,14 +167,14 @@ struct ContentView: View {
                         ForEach(tasks) { task in card(task) }
                         if tasks.isEmpty { Text(status == .doing ? "Move a task here to start work." : "Reviewed work appears here.").font(.callout).foregroundStyle(.secondary).padding(12) }
                     }
-                    Color.clear.frame(height: 50).contentShape(Rectangle()).dropDestination(for: String.self) { ids, _ in drop(ids, status: status); return true }
+                    Color.clear.frame(height: 50).contentShape(Rectangle()).dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: status) }
                 }.padding(12)
             }
         }
         .frame(width: 290).frame(maxHeight: .infinity)
         .background(.background, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
-        .dropDestination(for: String.self) { ids, _ in drop(ids, status: status); return true }
+        .dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: status) }
         .accessibilityElement(children: .contain).accessibilityLabel("\(status.title) column")
     }
     private func groupSection(_ group: TaskGroup?, tasks: [BoardTask]) -> some View {
@@ -202,7 +202,7 @@ struct ContentView: View {
             }
         }.padding(.vertical, 6)
         .contentShape(Rectangle())
-        .dropDestination(for: String.self) { ids, _ in drop(ids, status: .todo, group: group?.id, changeGroup: true); return true }
+        .dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: .todo, group: group?.id, changeGroup: true) }
     }
     private func card(_ task: BoardTask) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -226,8 +226,8 @@ struct ContentView: View {
             } else { selection = [task.id] }
             inspectedID = task.id; boardFocused = true
         }
-        .draggable(task.id)
-        .dropDestination(for: String.self) { ids, _ in drop(ids, status: task.status, group: project.groupID(for: task.id), changeGroup: task.status == .todo, before: task.id); return true }
+        .draggable(TaskDragPayload(documentID: document.dragIdentity, taskID: task.id))
+        .dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: task.status, group: project.groupID(for: task.id), changeGroup: task.status == .todo, before: task.id) }
         .contextMenu {
             ForEach(TaskStatus.allCases) { status in Button("Move to \(status.title)") { edit("Move Task") { $0.move([task.id], status: status) } } }
             Menu("Move to Group") {
@@ -251,10 +251,8 @@ struct ContentView: View {
         let before = offset < 0 ? siblings[index - 1].id : (siblings.indices.contains(index + 2) ? siblings[index + 2].id : nil)
         edit("Reorder Task") { $0.move([task.id], before: before) }
     }
-    private func drop(_ strings: [String], status: TaskStatus, group: String? = nil, changeGroup: Bool = false, before: String? = nil) {
-        let ids = Set(strings).intersection(project.tasks.map(\.id))
-        guard !ids.isEmpty else { return }
-        edit("Move Tasks") { $0.move(ids, status: status, group: group, changeGroup: changeGroup, before: before) }
+    private func drop(_ payloads: [TaskDragPayload], status: TaskStatus, group: String? = nil, changeGroup: Bool = false, before: String? = nil) -> Bool {
+        document.drop(payloads, status: status, group: group, changeGroup: changeGroup, before: before, undoManager: undoManager)
     }
     private func edit(_ name: String, _ change: (inout Project) -> Void) { document.edit(name, undoManager: undoManager, change) }
     private func addTask(group: String?) {

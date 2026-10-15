@@ -13,5 +13,9 @@
 <key>UTTypeDescription</key><string>Kanban Project</string>
 <key>UTTypeConformsTo</key><array><string>public.yaml</string><string>public.text</string></array>
 <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>yaml</string></array></dict>
+</dict><dict>
+<key>UTTypeIdentifier</key><string>com.taskboard.task-drag</string>
+<key>UTTypeDescription</key><string>Taskboard Task Drag</string>
+<key>UTTypeConformsTo</key><array><string>public.data</string></array>
 </dict></array>
 </dict></plist>

@@ -1,3 +1,6 @@
+# AI Influence level:
+AIL4: The bot did most of it.
+
 # Taskboard
 
 Native macOS Kanban for supervising external coding agents. Each project is a single UTF-8 `.kanban.yaml` file. No database, account, service, runtime network access, or agent process is required.
