@@ -6,7 +6,8 @@ struct TaskInspector: View {
     let task: BoardTask
     let close: () -> Void
     @Environment(\.undoManager) private var undoManager
-    @State private var markdownPreview = false
+    @State private var managingDependencies = false
+    @State private var dependencySearch = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +19,7 @@ struct TaskInspector: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(task.id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(task.id).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                     TextField("Task title", text: text("title"), axis: .vertical).font(.title3.weight(.semibold)).accessibilityIdentifier("taskTitle")
                     Picker("Status", selection: Binding(get: { task.status }, set: { status in edit("Change Status") { $0.status = status } })) {
                         ForEach(TaskStatus.allCases) { Text($0.title).tag($0) }
@@ -33,25 +34,48 @@ struct TaskInspector: View {
                         Label("Unresolved: " + document.project.unresolved(task).joined(separator: ", "), systemImage: "exclamationmark.triangle")
                             .font(.caption).foregroundStyle(.orange)
                     }
-                    HStack {
-                        Text("Description").font(.headline)
-                        Spacer()
-                        Toggle("Preview Markdown", isOn: $markdownPreview).toggleStyle(.button).font(.caption)
+                    section("Description") {
+                        MarkdownEditor(markdown: text("description"), label: "Description")
                     }
-                    if markdownPreview {
-                        Text(LocalizedStringKey(task.text("description"))).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                    } else { editor(text("description"), label: "Description") }
-                    section("Acceptance Criteria", hint: "One condition per line") { editor(list("acceptance_criteria"), label: "Acceptance criteria") }
-                    section("Dependencies", hint: "Completed dependencies make Todo tasks eligible for the next brief.") {
-                        if document.project.tasks.count < 2 { Text("No other tasks").foregroundStyle(.secondary).font(.caption) }
-                        ForEach(document.project.tasks.filter { $0.id != task.id }) { dependency in
-                            Toggle(isOn: Binding(get: { task.list("depends_on").contains(dependency.id) }, set: { selected in
-                                edit("Change Dependencies") {
-                                    var ids = $0.list("depends_on"); ids.removeAll { $0 == dependency.id }
-                                    if selected { ids.append(dependency.id) }; $0.fields["depends_on"] = .array(ids.map(YAMLValue.string))
+                    section("Acceptance Criteria") {
+                        ForEach(Array(task.list("acceptance_criteria").enumerated()), id: \.offset) { index, _ in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("Criterion \(index + 1)").font(.caption).foregroundStyle(.secondary)
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        edit("Remove Criterion") {
+                                            var items = $0.list("acceptance_criteria")
+                                            guard items.indices.contains(index) else { return }
+                                            items.remove(at: index)
+                                            $0.fields["acceptance_criteria"] = .array(items.map(YAMLValue.string))
+                                        }
+                                    } label: { Image(systemName: "minus.circle") }.help("Remove criterion")
                                 }
-                            })) { Text("\(dependency.title) · \(dependency.status.title)").font(.caption) }
+                                MarkdownEditor(markdown: criterion(index), label: "Criterion \(index + 1)")
+                            }
                         }
+                        Button("Add Criterion", systemImage: "plus") {
+                            edit("Add Criterion") { $0.fields["acceptance_criteria"] = .array(($0.list("acceptance_criteria") + [""]).map(YAMLValue.string)) }
+                        }
+                    }
+                    section("Dependencies", hint: "Completed dependencies make Todo tasks eligible for the next brief.") {
+                        if task.list("depends_on").isEmpty { Text("No dependencies").font(.caption).foregroundStyle(.secondary) }
+                        ForEach(task.list("depends_on"), id: \.self) { id in
+                            HStack {
+                                if let dependency = document.project.task(id) {
+                                    VStack(alignment: .leading) {
+                                        Text(dependency.title)
+                                        Text("\(id) · \(dependency.status.title)").foregroundStyle(.secondary)
+                                    }.font(.caption)
+                                } else { Text("Missing task: \(id)").font(.caption) }
+                                Spacer()
+                                Button { setDependency(id, selected: false) } label: { Image(systemName: "minus.circle") }
+                                    .help("Remove dependency")
+                            }
+                        }
+                        Button("Manage Dependencies…") { managingDependencies = true }
+                            .popover(isPresented: $managingDependencies) { dependencyPicker }
                     }
                     section("Agent Notes") { editor(text("agent_notes"), label: "Agent notes") }
                     section("Verification", hint: "One test or result per line") { editor(list("verification"), label: "Verification") }
@@ -72,6 +96,57 @@ struct TaskInspector: View {
                 }.padding(16)
             }.disabled(document.issue != nil)
         }.background(.background)
+    }
+    private var dependencyCandidates: [BoardTask] {
+        document.project.tasks.filter {
+            $0.id != task.id && (dependencySearch.isEmpty || $0.title.localizedCaseInsensitiveContains(dependencySearch) || $0.id.localizedCaseInsensitiveContains(dependencySearch))
+        }
+    }
+    private var dependencyPicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Manage Dependencies").font(.headline)
+            TextField("Search title or ID", text: $dependencySearch)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if dependencyCandidates.isEmpty {
+                        Text(dependencySearch.isEmpty ? "No other tasks" : "No matching tasks").foregroundStyle(.secondary)
+                    }
+                    ForEach(dependencyCandidates) { candidate in
+                        let selected = task.list("depends_on").contains(candidate.id)
+                        let cycle = document.project.wouldCreateDependencyCycle(taskID: task.id, dependencyID: candidate.id)
+                        Toggle(isOn: Binding(get: { selected }, set: { setDependency(candidate.id, selected: $0) })) {
+                            VStack(alignment: .leading) {
+                                Text(candidate.title)
+                                Text("\(candidate.id) · \(candidate.status.title)").font(.caption).foregroundStyle(.secondary)
+                                if cycle && !selected { Text("Would create a dependency cycle").font(.caption).foregroundStyle(.orange) }
+                            }
+                        }.disabled(cycle && !selected)
+                    }
+                }
+            }.frame(height: 280)
+            HStack { Spacer(); Button("Done") { managingDependencies = false } }
+        }.padding(16).frame(width: 360)
+    }
+    private func setDependency(_ id: String, selected: Bool) {
+        guard !selected || !document.project.wouldCreateDependencyCycle(taskID: task.id, dependencyID: id) else { return }
+        edit("Change Dependencies") {
+            var ids = $0.list("depends_on"); ids.removeAll { $0 == id }
+            if selected { ids.append(id) }
+            $0.fields["depends_on"] = .array(ids.map(YAMLValue.string))
+        }
+    }
+    private func criterion(_ index: Int) -> Binding<String> {
+        Binding(get: {
+            let items = document.project.task(task.id)?.list("acceptance_criteria") ?? []
+            return items.indices.contains(index) ? items[index] : ""
+        }, set: { value in
+            edit("Edit Criterion") {
+                var items = $0.list("acceptance_criteria")
+                guard items.indices.contains(index) else { return }
+                items[index] = value
+                $0.fields["acceptance_criteria"] = .array(items.map(YAMLValue.string))
+            }
+        })
     }
     private func text(_ key: String) -> Binding<String> {
         Binding(get: { task.text(key) }, set: { value in

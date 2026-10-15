@@ -16,7 +16,7 @@ enum AgentBrief {
         \(task.text("description"))
 
         ## Acceptance criteria
-        \(task.list("acceptance_criteria").map { "- " + $0 }.joined(separator: "\n"))
+        \(task.list("acceptance_criteria").map { "- " + $0.replacingOccurrences(of: "\n", with: "\n  ") }.joined(separator: "\n"))
 
         ## Dependencies
         \(dependencies.isEmpty ? "None." : dependencies)

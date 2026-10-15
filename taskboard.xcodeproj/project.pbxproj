@@ -8,12 +8,15 @@
 
 /* Begin PBXBuildFile section */
         A10000000000000000000001 = {isa = PBXBuildFile; productRef = A10000000000000000000002; };
+        A20000000000000000000001 = {isa = PBXBuildFile; productRef = A20000000000000000000002; };
 /* End PBXBuildFile section */
 /* Begin XCRemoteSwiftPackageReference section */
         A10000000000000000000003 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/jpsim/Yams.git"; requirement = {kind = exactVersion; version = 6.2.2; }; };
+        A20000000000000000000003 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/swiftlang/swift-markdown.git"; requirement = {kind = exactVersion; version = 0.7.3; }; };
 /* End XCRemoteSwiftPackageReference section */
 /* Begin XCSwiftPackageProductDependency section */
         A10000000000000000000002 = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000003; productName = Yams; };
+        A20000000000000000000002 = {isa = XCSwiftPackageProductDependency; package = A20000000000000000000003; productName = Markdown; };
 /* End XCSwiftPackageProductDependency section */
 /* Begin PBXContainerItemProxy section */
 		D04BFCC43080B0DB00B0FDBD /* PBXContainerItemProxy */ = {
@@ -60,7 +63,7 @@
 		D04BFCB13080B0D900B0FDBD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
- A10000000000000000000001,
+ A10000000000000000000001, A20000000000000000000001,
 			);
 		};
 		D04BFCC03080B0DB00B0FDBD /* Frameworks */ = {
@@ -112,7 +115,7 @@
 			fileSystemSynchronizedGroups = (
 				D04BFCB63080B0D900B0FDBD /* taskboard */,
 			);
-			packageProductDependencies = (A10000000000000000000002,);
+			packageProductDependencies = (A10000000000000000000002, A20000000000000000000002,);
 			name = taskboard;
 			productName = taskboard;
 			productReference = D04BFCB43080B0D900B0FDBD /* taskboard.app */;
@@ -194,7 +197,7 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D04BFCB53080B0D900B0FDBD /* Products */;
-			packageReferences = (A10000000000000000000003,);
+			packageReferences = (A10000000000000000000003, A20000000000000000000003,);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

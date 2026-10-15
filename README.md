@@ -9,7 +9,9 @@ Native macOS Kanban for supervising external coding agents. Each project is a si
 
 - Three workflow states: **Todo**, **Doing**, and **Done**.
 - Ordered, collapsible groups with completion progress, search, and filtering.
-- Editable task details, acceptance criteria, dependencies, agent notes, and verification results.
+- Rich text descriptions and individual acceptance criteria, saved as Markdown in YAML.
+- Compact dependency lists with a searchable dependency manager.
+- Recent-boards welcome window and a persistent, adjustable board/inspector split.
 - Developer approval for review-ready work, plus generated implementation briefs for external agents.
 - Native document windows, autosave, drag-and-drop, keyboard navigation, and undo/redo.
 - External-file reload, schema validation, independent-edit merging, and conflict recovery.
@@ -24,7 +26,7 @@ Native macOS Kanban for supervising external coding agents. Each project is a si
 
 ## Build and run
 
-Requires **macOS 27 or later and Xcode 27**. The deployment target deliberately uses SwiftUI's new `Document` / `DocumentReader` / `DocumentWriter` APIs. Open `taskboard.xcodeproj`, select the `taskboard` scheme and **My Mac**, then Run. Xcode resolves the pinned **Yams 6.2.2** package on the first build; subsequent app use is fully offline.
+Requires **macOS 27 or later and Xcode 27**. The deployment target deliberately uses SwiftUI's new `Document` / `DocumentReader` / `DocumentWriter` APIs. Open `taskboard.xcodeproj`, select the `taskboard` scheme and **My Mac**, then Run. Xcode resolves the pinned **Yams 6.2.2** and **swift-markdown 0.7.3** packages on the first build; subsequent app use is fully offline.
 
 ```sh
 xcodebuild -project taskboard.xcodeproj -scheme taskboard \
@@ -45,6 +47,10 @@ The local unsigned development app is produced at `/tmp/taskboard-build/Build/Pr
 - **⌘F:** search. The group picker filters all three columns. Overall and group progress always count the entire project, regardless of the filter.
 - **Groups:** create, rename and reorder groups. Group deletion requires confirmation and moves all its tasks to Ungrouped.
 - Drag tasks to columns to change status, to Todo groups to change group, or onto a card to insert before it. The context menu also provides status, group and ordering actions. Persisted ordering follows the schema's group and task sequences; flat columns retain this canonical order.
+- Launching without restored boards shows **Welcome to Taskboard**, with recent files, **New Board**, and **Open Board…**. The welcome window also returns after the last board closes and is available from the Window menu.
+- Opening a task starts with a two-thirds board / one-third inspector split. Drag the divider to adjust it; the app remembers the ratio. Closing the inspector gives the board the full width.
+- Description and acceptance criteria support bold (⌘B), italic (⌘I), links (⌘K), and lists. Each criterion is edited separately; Return inserts a newline within it. **Markdown** mode provides source editing. Unsupported formatting stays in source mode to preserve its contents. Pasted text uses plain text formatting; arbitrary RTF/HTML styles are not imported.
+- **Manage Dependencies…** searches tasks by title or ID. Only selected dependencies appear in the inspector; additions that would create cycles are disabled.
 - **⌘-click** selects multiple cards. **More → Move Selected to Group** moves the selection together. Deleting tasks requires confirmation and removes dependencies pointing to them.
 - Descriptions and notes accept Markdown. Description preview supports inline Markdown; source editors retain code blocks and all Markdown text verbatim.
 - **Copy Task Brief** includes task details, criteria, dependencies, file path and the agent editing contract. **Copy Next Task Brief** chooses the first Todo task with all dependencies Done. Save the document first to establish the path.

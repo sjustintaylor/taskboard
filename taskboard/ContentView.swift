@@ -34,10 +34,10 @@ struct ContentView: View {
         VStack(spacing: 0) {
             overview
             if let issue = document.issue { issueBanner(issue) }
-            HSplitView {
+            BoardSplitView(showsInspector: inspectedID.flatMap { project.task($0) } != nil) { boardWidth in
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 16) {
-                        ForEach(TaskStatus.allCases) { status in column(status) }
+                        ForEach(TaskStatus.allCases) { status in column(status, width: max(220, (boardWidth - 72) / 3)) }
                     }.padding(20)
                 }
                 .focusable().focused($boardFocused)
@@ -46,9 +46,10 @@ struct ContentView: View {
                 .onKeyPress(.leftArrow) { navigateColumn(-1); return .handled }
                 .onKeyPress(.rightArrow) { navigateColumn(1); return .handled }
                 .onKeyPress(.return) { inspectedID = selection.first; return .handled }
+            } inspector: {
                 if let id = inspectedID, let task = project.task(id) {
                     TaskInspector(document: document, task: task, close: { inspectedID = nil })
-                        .frame(minWidth: 280, idealWidth: 330, maxWidth: 440)
+                        .id(id)
                 }
             }
             Divider()
@@ -148,7 +149,7 @@ struct ContentView: View {
             } label: { Label("More", systemImage: "ellipsis.circle") }
         }
     }
-    private func column(_ status: TaskStatus) -> some View {
+    private func column(_ status: TaskStatus, width: CGFloat) -> some View {
         let tasks = visibleTasks.filter { $0.status == status }
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -171,7 +172,7 @@ struct ContentView: View {
                 }.padding(12)
             }
         }
-        .frame(width: 290).frame(maxHeight: .infinity)
+        .frame(width: width).frame(maxHeight: .infinity)
         .background(.background, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
         .dropDestination(for: TaskDragPayload.self) { ids, _ in return drop(ids, status: status) }

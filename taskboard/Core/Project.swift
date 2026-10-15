@@ -61,6 +61,15 @@ struct Project: Equatable, Sendable {
     func unresolved(_ task: BoardTask) -> [String] { task.list("depends_on").filter { self.task($0)?.status != .done } }
     var nextTask: BoardTask? { tasks.first { $0.status == .todo && unresolved($0).isEmpty } }
 
+    func wouldCreateDependencyCycle(taskID: String, dependencyID: String) -> Bool {
+        var pending = [dependencyID], visited = Set<String>()
+        while let id = pending.popLast() {
+            if id == taskID { return true }
+            if visited.insert(id).inserted { pending += task(id)?.list("depends_on") ?? [] }
+        }
+        return false
+    }
+
     mutating func update(_ id: String, _ edit: (inout BoardTask) -> Void) {
         for g in groups.indices {
             if let t = groups[g].tasks.firstIndex(where: { $0.id == id }) { edit(&groups[g].tasks[t]); return }
